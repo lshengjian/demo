@@ -3,12 +3,15 @@
 var express = require('express'),
      mongoose = require('mongoose'),
      path = require('path'),
+     os = require('os'),
+     fs = require('fs'),
      cookieParser = require('cookie-parser'),
      bodyParser = require('body-parser'),
      logger = require('morgan'),
      session = require('express-session'),
      debug = require('debug')('kb:main'),
      passport = require('passport'),
+     busboy = require('busboy'),
      LocalStrategy = require('passport-local').Strategy;
 
 var Account = require('./models/User');
@@ -29,13 +32,35 @@ var auth = function(req, res, next){
   else
   	next();
 };
-
+var uploadHandler=function(req, res) {
+    var boy = new busboy({ headers: req.headers });
+    boy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+      var saveTo = path.join(__dirname+"/public/upload", path.basename(filename));//os.tmpDir()
+      file.pipe(fs.createWriteStream(saveTo,{flags: 'w'}));
+      console.log(saveTo);
+    });
+    boy.on('finish', function() {
+      res.writeHead(200, { 'Connection': 'close' });
+      res.end("That's all folks!");
+    });
+    return req.pipe(boy);
+}
 
 
 
 var app = express();
-//app.set('views', path.join(__dirname, 'views'));
-//app.set('view engine', 'jade');
+var server = require('http').createServer(app);
+var io = require('socket.io')(server);
+io.on('connection', function (socket) {
+  debug('==connection==');
+  // when the client emits 'new message', this listens and executes
+  socket.on('message', function (data) {
+    // we tell the client to execute 'new message'
+    //debug(data);
+    socket.broadcast.emit('message', data);
+  });
+});
+
 
 app.use(logger('dev'));
 app.use(bodyParser.json());
@@ -48,6 +73,8 @@ app.use(session({
  }));
 
 app.use(express.static(path.join(__dirname, 'public')));
+//app.use(express.static(path.join(__dirname, 'upload')));
+
 
 // Configure passport middleware
 app.use(passport.initialize());
@@ -89,12 +116,16 @@ app.post('/register', function(req, res, next) {
     res.json({state:'OK'});
   });
 });
+app.post('/upload',  uploadHandler);
+
 //==================================================================
 var apiRoot="/api";
 var users = require('./routes/user')(auth);
 app.use(apiRoot, users);
 var projects = require('./routes/project')(auth);
 app.use(apiRoot, projects);
+var messages = require('./routes/message')(auth);
+app.use(apiRoot, messages);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -124,4 +155,4 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-module.exports = app;
+module.exports = server;

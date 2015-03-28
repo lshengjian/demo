@@ -1,39 +1,12 @@
 'use strict';
 
 /**********************************************************************
- * Angular Application
+ * Main Application
  **********************************************************************/
-var app = angular.module('myApp', ['ngResource', 'ngRoute','ui.bootstrap'])
-  .config(function($routeProvider, $locationProvider, $httpProvider) {
-    //================================================
-    // Check if the user is connected
-    //================================================
-    var checkLoggedin = function($q, $timeout, $http, $location, $rootScope){
-      // Initialize a new promise
-      var deferred = $q.defer();
+angular.module('myApp', ['ngResource', 'ngRoute','ui.bootstrap', 'hc.marked'])
+.config(function($routeProvider, $locationProvider, $httpProvider,markedProvider) {
+    markedProvider.setOptions({gfm: true});
 
-      // Make an AJAX call to check if the user is logged in
-      $http.get('/loggedin').success(function(user){
-        // Authenticated
-        //console.log(user);
-        if (user.id == 0){
-           $rootScope.message = 'You need to log in.';
-           $rootScope.user=null; 
-           deferred.reject();
-           $location.url('/login');
-        } else {
-			  $rootScope.user=user; 
-              deferred.resolve();
-        }
-      });
-
-      return deferred.promise;
-    };
-
-    
-    //================================================
-    // Add an interceptor for AJAX errors
-    //================================================
     $httpProvider.interceptors.push(function($q, $location) {
       return {
         response: function(response) {
@@ -47,14 +20,42 @@ var app = angular.module('myApp', ['ngResource', 'ngRoute','ui.bootstrap'])
         }
       };
     });
-    //================================================
 
-    //================================================
-    // Define all the routes
-    //================================================
+    var checkLoggedin = function($q,  $http, $location, $rootScope){
+      // Initialize a new promise
+      var deferred = $q.defer();
+      // Make an AJAX call to check if the user is logged in
+      $http.get('/loggedin').success(function(user){
+        if (user.id == 0){
+           $rootScope.errMsg = 'You need to log in.';
+           $rootScope.user=null; 
+           deferred.reject($rootScope.errMsg);
+           $location.url('/login');
+        } else {
+			  $rootScope.user=user; 
+              deferred.resolve(true);
+        }
+      });
+      return deferred.promise;
+    };
+    
+     var loadMsgs = function($q, $http){
+      var deferred = $q.defer();
+      $http.get('/api/messages').success(function(data){
+           deferred.resolve(data);
+       }).error(function(){
+		  deferred.reject('load messages fail!');
+	  });
+      return deferred.promise;
+    };
+
     $routeProvider
       .when('/', {
-        templateUrl: 'views/home.html'
+        templateUrl: 'views/home.html',
+        controller: 'HomeCtrl',
+        resolve: {
+           data: loadMsgs
+        }
       })
       .when('/admin', {
         templateUrl: 'views/admin.html',
@@ -65,109 +66,37 @@ var app = angular.module('myApp', ['ngResource', 'ngRoute','ui.bootstrap'])
       })
       .when('/login', {
         templateUrl: 'views/login.html',
-        controller: 'LoginCtrl'
+        controller: 'UserCtrl'
       })
       .when('/register', {
         templateUrl: 'views/register.html',
-        controller: 'RegisterCtrl'
+        controller: 'UserCtrl'
       })
       .otherwise({
         redirectTo: '/'
       });
-    //================================================
-
-  }) // end of config()
-  .run(function($rootScope, $http){
-    $rootScope.message = '';
-
+}) // end of config()
+.run(function($rootScope, $http,$log){
+    $rootScope.errMsg = '';
+    var socket =io();
+    $rootScope.sendMsg=function(msg) {
+        socket.emit('message', msg);
+        $http.post('/api/messages', msg).success(function(m){
+           $log.info(m);
+        }).error(function(){
+            $rootScope.errMsg = 'Save msg  failed.';
+       });
+    };
+    socket.on('message', function (data) {
+        $rootScope.$broadcast('socket:message', data);
+    });
+   
     // Logout function is available in any pages
     $rootScope.logout = function(){
-      $rootScope.message = 'Logged out.';
+      $rootScope.errMsg = '';
       $http.post('/logout');
     };
-  });
+ });
 
 
 
-app.controller('CarouselDemoCtrl', function ($scope) {
-  $scope.myInterval = 5000;
-  var slides = $scope.slides = [];
-  $scope.addSlide = function() {
-    var newWidth = 600 + slides.length + 1;
-    slides.push({
-      image: 'http://placekitten.com/' + newWidth + '/300',
-      text: ['More','Extra','Lots of','Surplus'][slides.length % 4] + ' ' +
-        ['Cats', 'Kittys', 'Felines', 'Cutes'][slides.length % 4]
-    });
-  };
-  for (var i=0; i<4; i++) {
-    $scope.addSlide();
-  }
-});
-
-/**********************************************************************
- * Login controller
- **********************************************************************/
-app.controller('LoginCtrl', function($scope, $rootScope, $http, $location) {
-  // This object will be filled by the form
-  $scope.user = {};
-
-  // Register the login() function
-  $scope.login = function(){
-    $http.post('/login', {
-      username: $scope.user.username,
-      password: $scope.user.password,
-    })
-    .success(function(user){
-      // No error: authentication OK
-      $rootScope.message = 'Authentication successful!';
-      $location.url('/admin');
-    })
-    .error(function(){
-      // Error: authentication failed
-      $rootScope.message = 'Authentication failed.';
-      $location.url('/login');
-    });
-  };
-});
-
-
-/**********************************************************************
- * Login controller
- **********************************************************************/
-app.controller('RegisterCtrl', function($scope, $rootScope, $http, $location) {
-  // This object will be filled by the form
-  $scope.user = {};
-
-  // Register the login() function
-  $scope.register = function(){
-    $http.post('/register', {
-      username: $scope.user.username,
-      password: $scope.user.password,
-    })
-    .success(function(user){
-      // No error: authentication OK
-      $rootScope.message = 'Register successful!';
-      $location.url('/admin');
-    })
-    .error(function(){
-      // Error: authentication failed
-      $rootScope.message = 'Register failed.';
-      $location.url('/login');
-    });
-  };
-});
-
-/**********************************************************************
- * Admin controller
- **********************************************************************/
-app.controller('AdminCtrl', function($scope, $http) {
-  // List of users got from the server
-  $scope.users = [];
-
-  // Fill the array to display it in the page
-  $http.get('/api/users').success(function(users){
-    for (var i in users)
-      $scope.users.push(users[i]);
-  });
-});
