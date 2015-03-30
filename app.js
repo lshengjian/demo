@@ -37,11 +37,11 @@ var uploadHandler=function(req, res) {
     boy.on('file', function(fieldname, file, filename, encoding, mimetype) {
       var saveTo = path.join(__dirname+"/public/upload", path.basename(filename));//os.tmpDir()
       file.pipe(fs.createWriteStream(saveTo,{flags: 'w'}));
-      console.log(saveTo);
+      debug.log(saveTo);
     });
     boy.on('finish', function() {
       res.writeHead(200, { 'Connection': 'close' });
-      res.end("That's all folks!");
+      res.end("OK!");
     });
     return req.pipe(boy);
 }
@@ -72,11 +72,6 @@ app.use(session({
     saveUninitialized: true
  }));
 
-app.use(express.static(path.join(__dirname, 'public')));
-//app.use(express.static(path.join(__dirname, 'upload')));
-
-
-// Configure passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -93,7 +88,11 @@ app.get('/loggedin', function(req, res) {
   res.json(req.isAuthenticated() ? req.user : {id:0});
 });
 
-
+app.get('/images', function(req, res) {
+  var files=fs.readdirSync('./public/upload');
+  debug(files);	
+  res.json(files);
+});
 app.post('/login', passport.authenticate('local'), function(req, res, next) {
 	debug('login:');
 	debug(req.user);
@@ -126,6 +125,9 @@ var projects = require('./routes/project')(auth);
 app.use(apiRoot, projects);
 var messages = require('./routes/message')(auth);
 app.use(apiRoot, messages);
+
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

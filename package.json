@@ -1,15 +1,15 @@
 {
-  "name": "kanban",
-  "version": "0.0.0",
-  "description": "projects manage platform of SISE game department ",
+  "name": "TXL2014",
+  "version": "0.0.1",
+  "description": "数字媒体技术１班交流平台",
   "main": "server.js",
   "scripts": {
     "start": "DEBUG=kb.* node server.js"
   },
   "keywords": [
-    "PM",
-    "kanban",
-    "SISE"
+    "Angularjs",
+    "demo",
+    "example"
   ],
   "author": "alex liu",
   "license": "BSD",

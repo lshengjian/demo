@@ -3,7 +3,7 @@
  * Home controller
  **********************************************************************/
 angular.module('myApp')
-.controller('HomeCtrl', function($scope,$log, data) {
+.controller('HomeCtrl', function($scope,$log, data,files) {
   $scope.msgs=data;
   var ds=$scope.msgs;
   $scope.$on('socket:message', function(event,msg){
@@ -14,29 +14,23 @@ angular.module('myApp')
 		$scope.$apply();
 
 	});
-   
-})
-
-.controller('CarouselDemoCtrl', function ($rootScope,$scope,$log) {
-  var slides = $scope.slides = [];
+ var slides = $scope.slides = [];
    $scope.myInterval = 5000;
    var idx=1;
-  $scope.addSlide = function(idx) {
+  $scope.addSlide = function(fn) {
     //var newWidth = 600 + slides.length + 1;
-    var ext= (idx==4)?'.gif':'.jpg';
-    var imgurl='/upload/img-' +idx+ext;
+   // var ext= (idx==4)?'.gif':'.jpg';
+    var imgurl='/upload/' +fn;
     slides.push({
       image: imgurl,
       text: ''
     });
-    $log.info(imgurl);
+   // $log.info(imgurl);
   };
-  for(var i=0;i<6;i++)
-     $scope.addSlide(i+1);
-//  addSlide("notify:");
-
-
+  for(var i=0;i<files.length;i++)
+     $scope.addSlide(files[i]);  
 })
+
 
 /**********************************************************************
  * User controller
@@ -53,14 +47,13 @@ angular.module('myApp')
     })
     .success(function(user){
       // No error: authentication OK
-      $rootScope.errMsg = 'Register successful!';
-      $location.url('/admin');
+      $rootScope.message = 'Register successful!';
     })
     .error(function(){
       // Error: authentication failed
-      $rootScope.errMsg = 'Register failed.';
-      $location.url('/login');
+      $rootScope.message = 'Register failed.';
     });
+      $location.url('/login');
   };
    // Register the login() function
   $scope.login = function(){
@@ -70,12 +63,12 @@ angular.module('myApp')
     })
     .success(function(user){
       // No error: authentication OK
-      $rootScope.errMsg = 'Authentication successful!';
+      $rootScope.message = 'Authentication successful!';
       $location.url('/admin');
     })
     .error(function(){
       // Error: authentication failed
-      $rootScope.errMsg = 'Authentication failed.';
+      $rootScope.message = 'Authentication failed.';
       $location.url('/login');
     });
   };

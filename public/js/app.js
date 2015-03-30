@@ -48,13 +48,24 @@ angular.module('myApp', ['ngResource', 'ngRoute','ui.bootstrap', 'hc.marked'])
 	  });
       return deferred.promise;
     };
+    
+      var loadImages = function($q, $http){
+      var deferred = $q.defer();
+      $http.get('/images').success(function(data){
+           deferred.resolve(data);
+       }).error(function(){
+		  deferred.reject('load images fail!');
+	  });
+      return deferred.promise;
+    };
 
     $routeProvider
       .when('/', {
         templateUrl: 'views/home.html',
         controller: 'HomeCtrl',
         resolve: {
-           data: loadMsgs
+           data: loadMsgs,
+           files: loadImages
         }
       })
       .when('/admin', {
